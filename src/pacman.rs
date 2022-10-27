@@ -24,28 +24,30 @@ struct Enemy;
 #[derive(Default)]
 struct CollisionEvent;
 
-#[derive(Resource)]
+#[derive(Default)]
 struct CollisionSound(Handle<AudioSource>);
 
 fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<ColorMaterial>>, asset_server: Res<AssetServer>) {
     let mut rng = rand::thread_rng();
 
     // spawn camera
-    commands.spawn(Camera2dBundle::default());
+    // commands.spawn(Camera2dBundle::default());
+    commands.spawn()
+    .insert_bundle(Camera2dBundle::default());
 
     // spawn audio
     commands.insert_resource(CollisionSound(asset_server.load("sounds/breakout_collision.ogg")));
 
     // spawn pacman
-    commands.spawn((
+    commands.spawn()
+    .insert_bundle(
             MaterialMesh2dBundle {
                 mesh: meshes.add(shape::Circle::default().into()).into(),
                 material: materials.add(ColorMaterial::from(Color::YELLOW)),
                 transform: Transform::from_translation(Vec3::new(0., 0., 0.)).with_scale(Vec3::new(50., 50., 0.)),
                 ..default()
-            },
-            Pacman,
-            ));
+            })
+    .insert(Pacman);
 
     for _i in 0..5 {
     let x: f32 = rng.gen_range(-300.0..300.0);
@@ -54,7 +56,8 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials
     let enemy_translation: Vec3 = Vec3::new(x, y, z);
 
         // spawn enemy
-        commands.spawn((
+        commands.spawn()
+        .insert_bundle(
                 SpriteBundle {
                     sprite: Sprite {
                         color: Color::from(Color::BLUE),
@@ -66,9 +69,8 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials
                         ..default()
                     },
                     ..default()
-                },
-                Enemy,
-                ));
+                })
+                .insert(Enemy);
     }
 }
 
