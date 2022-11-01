@@ -1,16 +1,24 @@
-use bevy::{prelude::*};
+use bevy::{
+    prelude::*,
+    sprite::collide_aabb::collide,
+    math::Vec3Swizzles,
+};
+use rand::Rng;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_event::<FoxMoveEvent>()
         .add_event::<FoxRunEvent>()
+        .add_event::<CollisionEvent>()
         .add_startup_system(setup)
         .add_system(bevy::window::close_on_esc)
         .add_system(setup_scene_once_loaded)
         .add_system(run_fox)
         .add_system(move_fox.after(run_fox))
         .add_system(update_fox_animation.after(setup_scene_once_loaded))
+        .add_system(check_for_collisions_with_fox)
+        .add_system(respawn_cube.after(check_for_collisions_with_fox))
         // .add_system(update_camera_transform.after(move_fox))
         .run();
 }
@@ -24,11 +32,20 @@ struct FoxMoveEvent;
 #[derive(Default)]
 struct FoxRunEvent;
 
+#[derive(Default)]
+struct CollisionEvent;
+
 #[derive(Component)]
 struct Fox;
 
 #[derive(Component)]
+struct Collider;
+
+#[derive(Component)]
 struct Camera;
+
+#[derive(Component)]
+struct Size(Vec3);
 
 fn setup(
     mut commands: Commands,
@@ -59,11 +76,22 @@ fn setup(
     });
 
     commands.spawn()
+    .insert_bundle(PbrBundle {
+        mesh: meshes.add(Mesh::from(shape::Cube {size: 100.})),
+        material: materials.add(Color::BLUE.into()),
+        transform: Transform::from_xyz(100., 50., 100.),
+        ..default()
+    })
+    .insert(Collider)
+    .insert(Size(Vec3::splat(100.)));
+
+    commands.spawn()
     .insert_bundle(SceneBundle {
         scene: asset_server.load("models/Fox.glb#Scene0"),
         ..default()
     })
-    .insert(Fox);
+    .insert(Fox)
+    .insert(Size(Vec3::new(25., 70., 125.)));
 
     commands.insert_resource(Animations(vec![
         asset_server.load("models/Fox.glb#Animation0"),
@@ -151,6 +179,56 @@ fn update_fox_animation(
             let speed = player.speed();
             player.set_speed(speed * 1.8);
         }
+    }
+}
+
+fn check_for_collisions_with_fox(
+    mut commands: Commands,
+    fox_query: Query<(&Transform, &Size), With<Fox>>,
+    collider_query: Query<(Entity, &Transform, &Size), With<Collider>>,
+    mut collision_events: EventWriter<CollisionEvent>,
+) {
+    let (fox_transform, fox_size) = fox_query.single();
+    for (collider_entity, collider_transform, collider_size) in &collider_query {
+        let fox_size = if fox_transform.forward().x == 0. {fox_size.0.xz()} else {fox_size.0.zx()};
+        let collision = collide(
+            fox_transform.translation.xzy(),
+            fox_size,
+            collider_transform.translation.xzy(),
+            collider_size.0.xz(),
+        );
+
+        if let Some(collision) = collision {
+            commands.entity(collider_entity).despawn();
+            collision_events.send_default();
+        }
+    }
+}
+
+fn respawn_cube(
+    mut commands: Commands,
+    collision_events: EventReader<CollisionEvent>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    if !collision_events.is_empty() {
+        let mut rng = rand::thread_rng();
+        let x = rng.gen_range(-500.0..500.0);
+        let y = 50.;
+        let z = rng.gen_range(-500.0..500.0);
+        let cube_translation = Vec3::new(x, y, z);
+
+        commands.spawn()
+        .insert_bundle(PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Cube {size: 100.})),
+            material: materials.add(Color::BLUE.into()),
+            transform: Transform::from_translation(cube_translation),
+            ..default()
+        })
+        .insert(Collider)
+        .insert(Size(Vec3::splat(100.)));
+
+        collision_events.clear();
     }
 }
 
