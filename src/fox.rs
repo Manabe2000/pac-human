@@ -11,6 +11,7 @@ fn main() {
         .add_event::<FoxMoveEvent>()
         .add_event::<FoxRunEvent>()
         .add_event::<CollisionEvent>()
+        .insert_resource(ScoreBoard{ score: 0})
         .add_startup_system(setup)
         .add_system(bevy::window::close_on_esc)
         .add_system(setup_scene_once_loaded)
@@ -20,11 +21,16 @@ fn main() {
         .add_system(check_for_collisions_with_fox)
         .add_system(respawn_cube.after(check_for_collisions_with_fox))
         // .add_system(update_camera_transform.after(move_fox))
+        .add_system(update_scoreboard.after(check_for_collisions_with_fox))
         .run();
 }
 
 // #[derive(Resource)]
 struct Animations(Vec<Handle<AnimationClip>>);
+
+struct ScoreBoard {
+    score: u32
+}
 
 #[derive(Default)]
 struct FoxMoveEvent;
@@ -98,6 +104,25 @@ fn setup(
         asset_server.load("models/Fox.glb#Animation1"),
         asset_server.load("models/Fox.glb#Animation2"),
     ]));
+
+    let text_style = TextStyle {
+        font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+        font_size: 50.,
+        color: Color::WHITE,
+    };
+    commands.spawn()
+    .insert_bundle(TextBundle::from_section(
+        "Score: 0",
+        text_style,
+    ).with_style( Style {
+        position_type: PositionType::Absolute,
+        position: UiRect {
+            top: Val::Px(5.),
+            left: Val::Px(5.),
+            ..default()
+        },
+        ..default()
+    }));
 }
 
 fn setup_scene_once_loaded(
@@ -187,6 +212,7 @@ fn check_for_collisions_with_fox(
     fox_query: Query<(&Transform, &Size), With<Fox>>,
     collider_query: Query<(Entity, &Transform, &Size), With<Collider>>,
     mut collision_events: EventWriter<CollisionEvent>,
+    mut scoreboard: ResMut<ScoreBoard>,
 ) {
     let (fox_transform, fox_size) = fox_query.single();
     for (collider_entity, collider_transform, collider_size) in &collider_query {
@@ -201,6 +227,7 @@ fn check_for_collisions_with_fox(
         if let Some(collision) = collision {
             commands.entity(collider_entity).despawn();
             collision_events.send_default();
+            scoreboard.score += 1;
         }
     }
 }
@@ -230,6 +257,14 @@ fn respawn_cube(
 
         collision_events.clear();
     }
+}
+
+fn update_scoreboard(
+    scoreboard: Res<ScoreBoard>,
+    mut query: Query<&mut Text>,
+) {
+    let mut text = query.single_mut();
+    text.sections[0].value = format!("Score: {}", scoreboard.score.to_string());
 }
 
 // fn update_camera_transform(
