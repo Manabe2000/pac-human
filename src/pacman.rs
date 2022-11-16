@@ -4,6 +4,7 @@ use rand::Rng;
 
 fn main() {
     App::new()
+        .insert_resource(ClearColor(Color::rgb(0.80, 0.80, 0.80)))
         .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_event::<CollisionEvent>()
@@ -41,15 +42,24 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials
     // spawn pacman
     commands.spawn()
     .insert_bundle(
-            MaterialMesh2dBundle {
-                mesh: meshes.add(shape::Circle::default().into()).into(),
-                material: materials.add(ColorMaterial::from(Color::YELLOW)),
-                transform: Transform::from_translation(Vec3::new(0., 0., 0.)).with_scale(Vec3::new(50., 50., 0.)),
+            // MaterialMesh2dBundle {
+            //     mesh: meshes.add(shape::Circle::default().into()).into(),
+            //     material: materials.add(ColorMaterial::from(Color::YELLOW)),
+            //     transform: Transform::from_translation(Vec3::new(0., 0., 0.)).with_scale(Vec3::new(50., 50., 0.)),
+            //     ..default()
+            // }
+            SpriteBundle {
+                texture: asset_server.load("../assets/images/pacman.png"),
+                transform: Transform::from_translation(Vec3::new(0., 0., 0.)).with_scale(Vec3::new(0.1, 0.1, 0.)),
+                // sprite: Sprite {
+                //     flip_x: true,
+                //     ..default()
+                // },
                 ..default()
             })
     .insert(Pacman);
 
-    for _i in 0..5 {
+    for _i in 0..10 {
     let x: f32 = rng.gen_range(-300.0..300.0);
     let y: f32 = rng.gen_range(-300.0..300.0);
     let z: f32 = 0.0;
@@ -59,13 +69,10 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials
         commands.spawn()
         .insert_bundle(
                 SpriteBundle {
-                    sprite: Sprite {
-                        color: Color::from(Color::BLUE),
-                        ..default()
-                    },
+                    texture: asset_server.load("../assets/images/enemy.png"),
                     transform: Transform {
                         translation: enemy_translation,
-                        scale: Vec3::new(50., 50., 0.),
+                        scale: Vec3::new(0.1, 0.1, 0.),
                         ..default()
                     },
                     ..default()
@@ -102,9 +109,11 @@ fn check_for_collisions(
 
         let collision = collide(
             pacman_transform.translation,
-            pacman_transform.scale.truncate(),
+            // pacman_transform.scale.truncate(),
+            Vec2::splat(50.),
             enemy_transform.translation,
-            enemy_transform.scale.truncate(),
+            // enemy_transform.scale.truncate(),
+            Vec2::splat(50.),
             );
 
         if let Some(_collision) = collision {
