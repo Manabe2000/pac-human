@@ -16,3 +16,7 @@ path = "src/pacman.rs"
 [[bin]]
 name = "fox"
 path = "src/fox.rs"
+
+[[bin]]
+name = "packman2"
+path = "src/packman2.rs"
