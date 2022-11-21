@@ -1,3 +1,4 @@
+use bevy::render::texture;
 use bevy::time::FixedTimestep;
 use bevy::prelude::*;
 use rand::prelude::random;
@@ -53,6 +54,11 @@ struct GrowthEvent;
 #[derive(Component)]
 struct Food;
 
+#[derive(Component)]
+struct Enemy{
+    direction: Direction,
+}
+
 #[derive(PartialEq, Copy, Clone)]
 enum Direction {
     Left,
@@ -78,7 +84,7 @@ fn setup_camera(mut commands: Commands) {
     commands.spawn_bundle(Camera2dBundle::default());
 }
 
-fn spawn_snake(mut commands: Commands) {
+fn spawn_snake(mut commands: Commands,asset_server: Res<AssetServer>) {
     commands
         .spawn_bundle(SpriteBundle {
             sprite: Sprite {
@@ -91,11 +97,16 @@ fn spawn_snake(mut commands: Commands) {
             },
             ..default()
         })
+        .insert_bundle(SpriteBundle {
+            texture: asset_server.load("../assets/images/pacman.png"),
+        ..default()},
+        )
         .insert(SnakeHead {
             direction: Direction::Up,
         })
         .insert(Position { x: 3, y: 3 })
-        .insert(Size::square(0.8));
+       // .insert(texture : asset_server.load("../assets/images/pacman.png"))
+        .insert(Size::square(0.002));
 }
 
 fn snake_movement_input(keyboard_input: Res<Input<KeyCode>>, mut heads: Query<&mut SnakeHead>) {
@@ -138,6 +149,32 @@ fn snake_movement(mut heads: Query<(&mut Position, &SnakeHead)>) {
             }
             Direction::Down => {
                 head_pos.y -= 1;
+            }
+            Direction::Stay => {}
+        };
+    }
+}
+fn enemy_movement(mut enemys: Query<(&mut Position, &Enemy)>) {
+    if let Some((mut enemy_pos, enemy)) = enemys.iter_mut().next() {
+        if enemy_pos.x < 0
+            || enemy_pos.y < 0
+            || enemy_pos.x as u32 >= SCREEN_WIDTH
+            || enemy_pos.y as u32 >= SCREEN_HEIGHT
+        {
+            //head.direction == {Direction::Stay;}
+        }
+        match &enemy.direction {
+            Direction::Left => {
+                enemy_pos.x -= 1;
+            }
+            Direction::Right => {
+                enemy_pos.x += 1;
+            }
+            Direction::Up => {
+                enemy_pos.y += 1;
+            }
+            Direction::Down => {
+                enemy_pos.y -= 1;
             }
             Direction::Stay => {}
         };
@@ -187,24 +224,48 @@ fn snake_eating(
 }
 
 
-fn food_spawner(mut commands: Commands) {
+fn food_spawner(mut commands: Commands,asset_server: Res<AssetServer>) {
     let entry = commands
         .spawn_bundle(SpriteBundle {
             sprite: Sprite {
-                color: FOOD_COLOR,
                 ..default()
             },
             ..default()
         })
+        .insert_bundle(SpriteBundle {
+            texture: asset_server.load("../assets/images/fruit.png"),
+        ..default()},
+        )
         .insert(Food)
         .insert(Position {
             x: (random::<f32>() * UNIT_WIDTH as f32) as i32,
             y: (random::<f32>() * UNIT_HEIGHT as f32) as i32,
         })
-        .insert(Size::square(0.8)).id();
+        .insert(Size::square(0.004)).id();
         println!("Food {}",entry.id())
 }
 
+fn enemy_spawner(mut commands: Commands,asset_server: Res<AssetServer>) {
+    let entry = commands
+        .spawn_bundle(SpriteBundle {
+            sprite: Sprite {
+                ..default()
+            },
+            ..default()
+        })
+        .insert_bundle(SpriteBundle {
+            texture: asset_server.load("../assets/images/enemy.png"),
+        ..default()},
+        )
+        .insert(Enemy{
+            direction: Direction::Up
+        })
+        .insert(Position {
+            x: (random::<f32>() * UNIT_WIDTH as f32) as i32,
+            y: (random::<f32>() * UNIT_HEIGHT as f32) as i32,
+        })
+        .insert(Size::square(0.002));
+}
 
 
 fn main() {
@@ -230,6 +291,12 @@ fn main() {
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(3.0))
                 .with_system(food_spawner),
+        )
+        .add_system_set(
+            SystemSet::new()
+            .with_run_criteria(FixedTimestep::step(3.0))
+            .with_system(enemy_spawner)
+            .with_system(enemy_movement),
         )
         .add_system_set_to_stage(
             CoreStage::PostUpdate,
