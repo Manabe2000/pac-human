@@ -155,7 +155,7 @@ fn snake_movement(mut heads: Query<(&mut Position, &SnakeHead)>) {
     }
 }
 fn enemy_movement(mut enemys: Query<(&mut Position, &Enemy)>) {
-    if let Some((mut enemy_pos, enemy)) = enemys.iter_mut().next() {
+    for (mut enemy_pos, enemy) in enemys.iter_mut() {
         if enemy_pos.x < 0
             || enemy_pos.y < 0
             || enemy_pos.x as u32 >= SCREEN_WIDTH
